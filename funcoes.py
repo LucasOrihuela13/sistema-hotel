@@ -14,8 +14,9 @@ def conectar():
         port=db_config["port"]
     )
 
-# --- BUSCA OTIMIZADA (COM CACHE) ---
-@st.cache_data(ttl=5)
+# --- BUSCA DE QUARTOS (SEM CACHE - SEMPRE ATUAL) ---
+# Removemos o @st.cache_data daqui. 
+# Agora ele consulta o banco toda vez que a página carrega.
 def buscar_quartos_ocupados(data_entrada, data_saida):
     conn = conectar()
     cursor = conn.cursor()
@@ -34,7 +35,7 @@ def buscar_quartos_ocupados(data_entrada, data_saida):
     
     return quartos_ocupados
 
-# --- VERIFICAÇÃO DE DISPONIBILIDADE (SEM CACHE) ---
+# --- VERIFICAÇÃO DE DISPONIBILIDADE ---
 def verificar_disponibilidade(quarto_id, data_entrada, data_saida):
     conn = conectar()
     cursor = conn.cursor()
@@ -54,7 +55,7 @@ def verificar_disponibilidade(quarto_id, data_entrada, data_saida):
     
     return resultado == 0
 
-# --- FAZER RESERVA (CORRIGIDO: cliente_nome) ---
+# --- FAZER RESERVA (COM ANTI-SPAM) ---
 def reservar_quarto(quarto_id, nome_cliente, data_entrada, data_saida, valor_diaria):
     conn = conectar()
     cursor = conn.cursor()
@@ -65,7 +66,6 @@ def reservar_quarto(quarto_id, nome_cliente, data_entrada, data_saida, valor_dia
             return False, "❌ O quarto foi ocupado por outra pessoa neste exato momento!"
 
         # 2. Checagem Anti-Duplicidade
-        # CORREÇÃO AQUI: Usando 'cliente_nome' que é o nome real da coluna no seu banco
         query_spam = """
             SELECT id FROM reservas 
             WHERE quarto_id = %s AND data_entrada = %s AND cliente_nome = %s
@@ -82,8 +82,7 @@ def reservar_quarto(quarto_id, nome_cliente, data_entrada, data_saida, valor_dia
         
         valor_total = dias * float(valor_diaria)
         
-        # 4. Gravação no Banco
-        # CORREÇÃO AQUI TAMBÉM: 'cliente_nome'
+        # 4. Gravação no Banco (Usando cliente_nome correto)
         query_insert = """
             INSERT INTO reservas (quarto_id, cliente_nome, data_entrada, data_saida, valor_total)
             VALUES (%s, %s, %s, %s, %s)
