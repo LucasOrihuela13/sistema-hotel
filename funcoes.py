@@ -15,7 +15,6 @@ def conectar():
     )
 
 # --- BUSCA OTIMIZADA (COM CACHE) ---
-# O cache aqui faz o painel carregar rápido
 @st.cache_data(ttl=5)
 def buscar_quartos_ocupados(data_entrada, data_saida):
     conn = conectar()
@@ -36,7 +35,6 @@ def buscar_quartos_ocupados(data_entrada, data_saida):
     return quartos_ocupados
 
 # --- VERIFICAÇÃO DE DISPONIBILIDADE (SEM CACHE) ---
-# Segurança: Consulta o banco em tempo real
 def verificar_disponibilidade(quarto_id, data_entrada, data_saida):
     conn = conectar()
     cursor = conn.cursor()
@@ -56,28 +54,27 @@ def verificar_disponibilidade(quarto_id, data_entrada, data_saida):
     
     return resultado == 0
 
-# --- FAZER RESERVA (COM ANTI-SPAM E CÁLCULO) ---
+# --- FAZER RESERVA (CORRIGIDO: cliente_nome) ---
 def reservar_quarto(quarto_id, nome_cliente, data_entrada, data_saida, valor_diaria):
     conn = conectar()
     cursor = conn.cursor()
     
     try:
-        # 1. Checagem de Disponibilidade (O Quarto está livre?)
+        # 1. Checagem de Disponibilidade
         if not verificar_disponibilidade(quarto_id, data_entrada, data_saida):
             return False, "❌ O quarto foi ocupado por outra pessoa neste exato momento!"
 
-        # 2. Checagem Anti-Duplicidade (O Usuário clicou 2x?)
-        # Verifica se já existe uma reserva idêntica (mesmo quarto, data e nome)
+        # 2. Checagem Anti-Duplicidade
+        # CORREÇÃO AQUI: Usando 'cliente_nome' que é o nome real da coluna no seu banco
         query_spam = """
             SELECT id FROM reservas 
-            WHERE quarto_id = %s AND data_entrada = %s AND nome_cliente = %s
+            WHERE quarto_id = %s AND data_entrada = %s AND cliente_nome = %s
         """
         cursor.execute(query_spam, (quarto_id, data_entrada, nome_cliente))
         if cursor.fetchone():
             return False, "⚠️ Essa reserva já foi processada! (Evitamos a duplicação)"
 
         # 3. Cálculo do Valor Total
-        # Converte strings de volta para data para calcular a diferença de dias
         d1 = datetime.strptime(data_entrada, "%Y-%m-%d")
         d2 = datetime.strptime(data_saida, "%Y-%m-%d")
         dias = (d2 - d1).days
@@ -86,9 +83,9 @@ def reservar_quarto(quarto_id, nome_cliente, data_entrada, data_saida, valor_dia
         valor_total = dias * float(valor_diaria)
         
         # 4. Gravação no Banco
-        # OBS: Se seu banco usar 'cliente_nome' em vez de 'nome_cliente', ajuste abaixo.
+        # CORREÇÃO AQUI TAMBÉM: 'cliente_nome'
         query_insert = """
-            INSERT INTO reservas (quarto_id, nome_cliente, data_entrada, data_saida, valor_total)
+            INSERT INTO reservas (quarto_id, cliente_nome, data_entrada, data_saida, valor_total)
             VALUES (%s, %s, %s, %s, %s)
         """
         cursor.execute(query_insert, (quarto_id, nome_cliente, data_entrada, data_saida, valor_total))
@@ -98,7 +95,7 @@ def reservar_quarto(quarto_id, nome_cliente, data_entrada, data_saida, valor_dia
         mensagem = f"✅ Reserva Confirmada! Total: R$ {valor_total:.2f}"
 
     except Exception as e:
-        conn.rollback() # Desfaz alterações se der erro
+        conn.rollback()
         status = False
         mensagem = f"Erro ao gravar no banco: {e}"
         
@@ -108,7 +105,7 @@ def reservar_quarto(quarto_id, nome_cliente, data_entrada, data_saida, valor_dia
         
     return status, mensagem
 
-# --- LISTAR RESERVAS (MANTIDO) ---
+# --- LISTAR RESERVAS ---
 def listar_reservas(quarto_id=None):
     conn = conectar()
     cursor = conn.cursor()
@@ -123,7 +120,7 @@ def listar_reservas(quarto_id=None):
     conn.close()
     return dados
 
-# --- CANCELAR RESERVA (MANTIDO) ---
+# --- CANCELAR RESERVA ---
 def cancelar_reserva(reserva_id):
     conn = conectar()
     cursor = conn.cursor()
