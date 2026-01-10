@@ -134,8 +134,8 @@ if dados:
         tabela_dados.append({
             "ID": item[0],
             "Cliente": item[2],
-            "Check-in": item[3].strftime("%d/%m/%Y"), # Formatação visual na tabela também
-            "Check-out": item[4].strftime("%d/%m/%Y"),
+            "Entrada": item[3].strftime("%d/%m/%Y"), # Formatação visual na tabela também
+            "Saída": item[4].strftime("%d/%m/%Y"),
             "Valor Total": valor_formatado
         })
     st.table(tabela_dados)
