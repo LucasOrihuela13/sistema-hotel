@@ -32,18 +32,32 @@ if not check_password():
 # --- INÍCIO DO SISTEMA ---
 st.title("🏨 Sistema de Gerenciamento de Hotel")
 
-# --- BARRA LATERAL (NOVA RESERVA) ---
+# --- BARRA LATERAL ---
 with st.sidebar:
-    st.header("Nova Reserva")
+    st.header("Recepção")
     
-    # 1. CRIAÇÃO DO FORMULÁRIO (Resolve latência e cliques múltiplos)
+    # 1. SELETOR GLOBAL (FORA DO FORMULÁRIO)
+    # Ao mudar aqui, a página recarrega e atualiza as tabelas lá embaixo na hora!
+    quarto_selecionado = st.selectbox(
+        "Selecione o Quarto para Gerenciar:", 
+        [1, 2, 3, 4, 5, 6]
+    )
+    
+    st.divider() # Uma linha visual para separar
+    
+    st.subheader("Fazer Nova Reserva")
+    
+    # 2. FORMULÁRIO DE CADASTRO
     with st.form("form_reserva"):
-        quarto_selecionado = st.selectbox("Escolha o Quarto", [1, 2, 3, 4, 5, 6])
+        # Mostra visualmente qual quarto está sendo reservado
+        st.info(f"Reservando: **Quarto {quarto_selecionado}**")
+        
+        # O selectbox NÃO fica mais aqui dentro.
+        # Continuamos só com os dados do cliente:
         nome_cliente = st.text_input("Nome do Cliente")
         
         col1, col2 = st.columns(2)
         with col1:
-            # 2. DATA FORMATADA (DD/MM/YYYY)
             data_entrada = st.date_input(
                 "Data Entrada", 
                 datetime.date.today(),
@@ -58,9 +72,9 @@ with st.sidebar:
         
         valor_diaria = st.number_input("Valor da Diária (R$)", min_value=0.0, value=100.0, step=10.0)
 
-        # Botão de envio vinculado ao formulário
+        # Botão de envio
         enviado = st.form_submit_button("Confirmar Reserva")
-
+        
     # LÓGICA DE ENVIO (Só roda ao clicar)
     if enviado:
         hoje = datetime.date.today()
