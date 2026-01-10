@@ -128,14 +128,14 @@ dados = listar_reservas(quarto_selecionado)
 if dados:
     tabela_dados = []
     for item in dados:
-        # item[5] é a coluna valor_total vinda do banco
-        valor_formatado = f"R$ {item[5]:.2f}" if len(item) > 5 and item[5] is not None else "R$ 0.00"
+        # item[6] é a coluna valor_total vinda do banco
+        valor_formatado = f"R$ {item[6]:.2f}" if len(item) > 6 and item[6] is not None else "R$ 0.00"
         
         tabela_dados.append({
             "ID": item[0],
-            "Cliente": item[2],
-            "Entrada": item[3].strftime("%d/%m/%Y"), # Formatação visual na tabela também
-            "Saída": item[4].strftime("%d/%m/%Y"),
+            "Cliente": item[3],
+            "Entrada": item[4].strftime("%d/%m/%Y"), # Formatação visual na tabela também
+            "Saída": item[5].strftime("%d/%m/%Y"),
             "Valor Total": valor_formatado
         })
     st.table(tabela_dados)
