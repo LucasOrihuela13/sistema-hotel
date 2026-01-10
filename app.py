@@ -119,46 +119,77 @@ for i in range(6):
         else:
             st.error(f"**Quarto {numero_quarto}**\n\nOCUPADO")
 
-# --- TABELA DE RESERVAS E CANCELAMENTO (MANTIDA ORIGINAL) ---
+# --- TABELA DE RESERVAS E CANCELAMENTO ---
 
-st.subheader(f"📅 Agenda de Reservas: Quarto {quarto_selecionado}")
+# --- ÁREA DE LISTAGEM COM ABAS ---
+st.write("---") # Linha divisória visual
+st.header(f"Gestão do Quarto {quarto_selecionado}")
 
-dados = listar_reservas(quarto_selecionado)
+# Criação das Abas
+tab_ativas, tab_historico = st.tabs(["📅 Reservas Ativas/Futuras", "📂 Histórico Completo"])
 
-if dados:
-    tabela_dados = []
-    for item in dados:
-        # item[6] é a coluna valor_total vinda do banco
-        valor_formatado = f"R$ {item[6]:.2f}" if len(item) > 6 and item[6] is not None else "R$ 0.00"
+# --- ABA 1: RESERVAS ATIVAS (Com Cancelamento) ---
+with tab_ativas:
+    # Chama a função pedindo apenas as ativas (apenas_historico=False)
+    dados_ativos = listar_reservas(quarto_selecionado, apenas_historico=False)
+    
+    if dados_ativos:
+        tabela_ativas = []
+        for item in dados_ativos:
+            # item[6] é o Valor Total
+            val_formatado = f"R$ {item[6]:.2f}" if len(item) > 6 and item[6] is not None else "R$ 0.00"
+            
+            tabela_ativas.append({
+                "ID": item[0],
+                "Cliente": item[3],                # item[3] = Nome
+                "Entrada": item[4].strftime("%d/%m/%Y"), # item[4] = Data Entrada
+                "Saída": item[5].strftime("%d/%m/%Y"),   # item[5] = Data Saída
+                "Valor Total": val_formatado
+            })
+        st.table(tabela_ativas)
         
-        tabela_dados.append({
-            "ID": item[0],
-            "Cliente": item[3],
-            "Entrada": item[4].strftime("%d/%m/%Y"), # Formatação visual na tabela também
-            "Saída": item[5].strftime("%d/%m/%Y"),
-            "Valor Total": valor_formatado
-        })
-    st.table(tabela_dados)
-    
-    # --- ÁREA DE CANCELAMENTO ---
-    st.warning("Zona de Cancelamento")
-    
-    col_cancel1, col_cancel2 = st.columns([3, 1])
-    
-    with col_cancel1:
-        lista_ids = [item[0] for item in dados]
-        id_para_cancelar = st.selectbox("Selecione o ID da reserva para cancelar:", lista_ids)
-        
-    with col_cancel2:
-        st.write("") 
-        st.write("") 
-        if st.button("🗑️ Cancelar Reserva"):
-            sucesso, msg = cancelar_reserva(id_para_cancelar)
-            if sucesso:
-                st.success(msg)
-                st.rerun()
-            else:
-                st.error(msg)
+        # O Cancelamento só existe na aba de ativas
+        st.warning("Zona de Cancelamento")
+        c1, c2 = st.columns([3, 1])
+        with c1:
+            # Cria lista de IDs apenas das reservas ativas
+            ids_disponiveis = [d[0] for d in dados_ativos]
+            id_cancelar = st.selectbox("Selecione o ID para cancelar:", ids_disponiveis)
+        with c2:
+            st.write("") # Espaçamento
+            st.write("") 
+            if st.button("🗑️ Cancelar"):
+                with st.spinner("Cancelando..."):
+                    sucesso, msg = cancelar_reserva(id_cancelar)
                 
-else:
-    st.info(f"Nenhuma reserva futura encontrada para o Quarto {quarto_selecionado}.")
+                if sucesso:
+                    st.success(msg)
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error(msg)
+    else:
+        st.info("Nenhuma reserva ativa para este quarto no momento.")
+
+# --- ABA 2: HISTÓRICO (Apenas Leitura) ---
+with tab_historico:
+    # Chama a função pedindo o passado (apenas_historico=True)
+    dados_hist = listar_reservas(quarto_selecionado, apenas_historico=True)
+    
+    if dados_hist:
+        tabela_hist = []
+        for item in dados_hist:
+            val_formatado = f"R$ {item[6]:.2f}" if len(item) > 6 and item[6] is not None else "R$ 0.00"
+            
+            tabela_hist.append({
+                "ID": item[0],
+                "Cliente": item[3],
+                "Entrou em": item[4].strftime("%d/%m/%Y"),
+                "Saiu em": item[5].strftime("%d/%m/%Y"),
+                "Valor Pago": val_formatado
+            })
+        
+        # Usamos dataframe aqui pois permite ordenar colunas clicando no cabeçalho
+        st.dataframe(tabela_hist, use_container_width=True, hide_index=True)
+    else:
+        st.info("Ainda não há histórico de reservas finalizadas para este quarto.")

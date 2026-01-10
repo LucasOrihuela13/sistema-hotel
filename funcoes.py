@@ -105,16 +105,39 @@ def reservar_quarto(quarto_id, nome_cliente, data_entrada, data_saida, valor_dia
     return status, mensagem
 
 # --- LISTAR RESERVAS ---
-def listar_reservas(quarto_id=None):
+def listar_reservas(quarto_id=None, apenas_historico=False):
     conn = conectar()
     cursor = conn.cursor()
     
+    hoje = datetime.now().date()
+    
+    # Começamos uma query base
+    # O "WHERE 1=1" é um truque para poder adicionar "ANDs" depois sem medo
+    query = "SELECT * FROM reservas WHERE 1=1"
+    params = []
+
+    # FILTRO 1: Quarto Específico
     if quarto_id:
-        cursor.execute("SELECT * FROM reservas WHERE quarto_id = %s", (quarto_id,))
+        query += " AND quarto_id = %s"
+        params.append(quarto_id)
+
+    # FILTRO 2: Separação de Tempo
+    if apenas_historico:
+        # Histórico = Data de Saída já passou
+        query += " AND data_saida < %s"
+        params.append(hoje)
+        # Ordena do mais recente para o mais antigo
+        query += " ORDER BY data_saida DESC"
     else:
-        cursor.execute("SELECT * FROM reservas")
-        
+        # Ativas = Data de Saída é hoje ou no futuro
+        query += " AND data_saida >= %s"
+        params.append(hoje)
+        # Ordena da data mais próxima para a mais distante
+        query += " ORDER BY data_entrada ASC"
+
+    cursor.execute(query, tuple(params))
     dados = cursor.fetchall()
+    
     cursor.close()
     conn.close()
     return dados
