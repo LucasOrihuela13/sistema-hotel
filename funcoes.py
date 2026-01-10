@@ -14,9 +14,8 @@ def conectar():
         port=db_config["port"]
     )
 
-# --- BUSCA DE QUARTOS (SEM CACHE - SEMPRE ATUAL) ---
-# Removemos o @st.cache_data daqui. 
-# Agora ele consulta o banco toda vez que a página carrega.
+# --- BUSCA DE QUARTOS ---
+# Consulta o banco toda vez que a página carrega.
 def buscar_quartos_ocupados(data_entrada, data_saida):
     conn = conectar()
     cursor = conn.cursor()

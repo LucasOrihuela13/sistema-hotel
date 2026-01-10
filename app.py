@@ -1,7 +1,6 @@
 import streamlit as st
 import datetime
 import time
-# Importamos as funções do backend
 from funcoes import reservar_quarto, listar_reservas, verificar_disponibilidade, cancelar_reserva, buscar_quartos_ocupados
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
@@ -17,7 +16,7 @@ def check_password():
     senha_digitada = st.text_input("Digite a senha de acesso", type="password")
     
     if st.button("Entrar"):
-        # Garante que busca na seção [geral] conforme seu secrets atual
+        # Garante que busca na seção [geral] conforme o secrets atual
         senha_secreta = st.secrets["geral"]["senha_site"]
         if senha_digitada == senha_secreta:  
             st.session_state['password_correct'] = True
@@ -37,7 +36,6 @@ with st.sidebar:
     st.header("Recepção")
     
     # 1. SELETOR GLOBAL (FORA DO FORMULÁRIO)
-    # Ao mudar aqui, a página recarrega e atualiza as tabelas lá embaixo na hora!
     quarto_selecionado = st.selectbox(
         "Selecione o Quarto para Gerenciar:", 
         [1, 2, 3, 4, 5, 6]
@@ -52,8 +50,7 @@ with st.sidebar:
         # Mostra visualmente qual quarto está sendo reservado
         st.info(f"Reservando: **Quarto {quarto_selecionado}**")
         
-        # O selectbox NÃO fica mais aqui dentro.
-        # Continuamos só com os dados do cliente:
+        # Continuamos só com os dados:
         nome_cliente = st.text_input("Nome do Cliente")
         
         col1, col2 = st.columns(2)
@@ -74,12 +71,12 @@ with st.sidebar:
 
         # Botão de envio
         enviado = st.form_submit_button("Confirmar Reserva")
-        
-    # LÓGICA DE ENVIO (Só roda ao clicar)
+
+    # LÓGICA DE ENVIO
     if enviado:
         hoje = datetime.date.today()
         
-        # 3. VALIDAÇÕES DE SEGURANÇA (Datas passadas e lógicas)
+        # 3. VALIDAÇÕES DE SEGURANÇA
         if data_entrada < hoje:
             st.error("❌ Erro: Não é possível fazer reservas no passado!")
         elif data_saida <= data_entrada:
@@ -137,13 +134,13 @@ for i in range(6):
 
 # --- ÁREA DE LISTAGEM COM ABAS ---
 st.write("---") 
-st.header("Gerenciamento de Reservas") # Mudei o título para ficar genérico
+st.header("Gerenciamento de Reservas")
 
 tab_ativas, tab_historico = st.tabs(["📅 Reservas Ativas/Futuras", "📂 Histórico Completo"])
 
 # --- ABA 1: RESERVAS ATIVAS ---
 with tab_ativas:
-    # --- NOVO: CONTROLE DE FILTRO ---
+    # --- CONTROLE DE FILTRO ---
     col_filtro, col_vazia = st.columns([2, 3])
     with col_filtro:
         tipo_filtro = st.radio(
@@ -168,7 +165,7 @@ with tab_ativas:
             
             tabela_ativas.append({
                 "ID": item[0],
-                "Quarto": item[2], # Importante ver o número do quarto agora!
+                "Quarto": item[2],
                 "Cliente": item[3],
                 "Entrada": item[4].strftime("%d/%m/%Y"),
                 "Saída": item[5].strftime("%d/%m/%Y"),
