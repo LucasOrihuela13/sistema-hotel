@@ -128,40 +128,37 @@ st.header(f"Gestão do Quarto {quarto_selecionado}")
 # Criação das Abas
 tab_ativas, tab_historico = st.tabs(["📅 Reservas Ativas/Futuras", "📂 Histórico Completo"])
 
-# --- ABA 1: RESERVAS ATIVAS (Com Cancelamento) ---
+# --- ABA 1: RESERVAS ATIVAS ---
 with tab_ativas:
-    # Chama a função pedindo apenas as ativas (apenas_historico=False)
     dados_ativos = listar_reservas(quarto_selecionado, apenas_historico=False)
     
     if dados_ativos:
         tabela_ativas = []
         for item in dados_ativos:
-            # item[6] é o Valor Total
             val_formatado = f"R$ {item[6]:.2f}" if len(item) > 6 and item[6] is not None else "R$ 0.00"
             
             tabela_ativas.append({
                 "ID": item[0],
-                "Cliente": item[3],                # item[3] = Nome
-                "Entrada": item[4].strftime("%d/%m/%Y"), # item[4] = Data Entrada
-                "Saída": item[5].strftime("%d/%m/%Y"),   # item[5] = Data Saída
+                "Quarto": item[2],           # <--- ADICIONADO AQUI (item[2] é o número do quarto)
+                "Cliente": item[3],
+                "Entrada": item[4].strftime("%d/%m/%Y"),
+                "Saída": item[5].strftime("%d/%m/%Y"),
                 "Valor Total": val_formatado
             })
         st.table(tabela_ativas)
         
-        # O Cancelamento só existe na aba de ativas
+        # Botão de Cancelar (Mantido igual)
         st.warning("Zona de Cancelamento")
         c1, c2 = st.columns([3, 1])
         with c1:
-            # Cria lista de IDs apenas das reservas ativas
             ids_disponiveis = [d[0] for d in dados_ativos]
             id_cancelar = st.selectbox("Selecione o ID para cancelar:", ids_disponiveis)
         with c2:
-            st.write("") # Espaçamento
+            st.write("")
             st.write("") 
             if st.button("🗑️ Cancelar"):
                 with st.spinner("Cancelando..."):
                     sucesso, msg = cancelar_reserva(id_cancelar)
-                
                 if sucesso:
                     st.success(msg)
                     time.sleep(1)
@@ -171,9 +168,8 @@ with tab_ativas:
     else:
         st.info("Nenhuma reserva ativa para este quarto no momento.")
 
-# --- ABA 2: HISTÓRICO (Apenas Leitura) ---
+# --- ABA 2: HISTÓRICO ---
 with tab_historico:
-    # Chama a função pedindo o passado (apenas_historico=True)
     dados_hist = listar_reservas(quarto_selecionado, apenas_historico=True)
     
     if dados_hist:
@@ -183,13 +179,13 @@ with tab_historico:
             
             tabela_hist.append({
                 "ID": item[0],
+                "Quarto": item[2],           # <--- ADICIONADO AQUI TAMBÉM
                 "Cliente": item[3],
                 "Entrou em": item[4].strftime("%d/%m/%Y"),
                 "Saiu em": item[5].strftime("%d/%m/%Y"),
                 "Valor Pago": val_formatado
             })
         
-        # Usamos dataframe aqui pois permite ordenar colunas clicando no cabeçalho
         st.dataframe(tabela_hist, use_container_width=True, hide_index=True)
     else:
         st.info("Ainda não há histórico de reservas finalizadas para este quarto.")
