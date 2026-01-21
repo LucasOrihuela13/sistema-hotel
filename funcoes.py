@@ -55,16 +55,16 @@ def verificar_disponibilidade(quarto_id, data_entrada, data_saida):
     return resultado == 0
 
 # --- FAZER RESERVA (COM ANTI-SPAM) ---
-def reservar_quarto(quarto_id, nome_cliente, data_entrada, data_saida, valor_diaria):
+def reservar_quarto(quarto_id, nome_cliente, telefone, qtd_pessoas, data_entrada, data_saida, valor_diaria):
     conn = conectar()
     cursor = conn.cursor()
     
     try:
-        # 1. Checagem de Disponibilidade
+        # 1. Checagem de Disponibilidade (Sua lógica original)
         if not verificar_disponibilidade(quarto_id, data_entrada, data_saida):
             return False, "❌ O quarto foi ocupado por outra pessoa neste exato momento!"
 
-        # 2. Checagem Anti-Duplicidade
+        # 2. Checagem Anti-Duplicidade (Sua lógica original mantida)
         query_spam = """
             SELECT id FROM reservas 
             WHERE quarto_id = %s AND data_entrada = %s AND cliente_nome = %s
@@ -81,12 +81,13 @@ def reservar_quarto(quarto_id, nome_cliente, data_entrada, data_saida, valor_dia
         
         valor_total = dias * float(valor_diaria)
         
-        # 4. Gravação no Banco (Usando cliente_nome correto)
+        # 4. Gravação no Banco (ATUALIZADO COM OS NOVOS CAMPOS)
         query_insert = """
-            INSERT INTO reservas (quarto_id, cliente_nome, data_entrada, data_saida, valor_total)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO reservas (quarto_id, cliente_nome, telefone, qtd_pessoas, data_entrada, data_saida, valor_total)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
-        cursor.execute(query_insert, (quarto_id, nome_cliente, data_entrada, data_saida, valor_total))
+        # Note que adicionamos telefone e qtd_pessoas na tupla abaixo
+        cursor.execute(query_insert, (quarto_id, nome_cliente, telefone, qtd_pessoas, data_entrada, data_saida, valor_total))
         
         conn.commit()
         status = True

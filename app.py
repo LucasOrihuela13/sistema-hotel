@@ -1,10 +1,20 @@
 import streamlit as st
 import datetime
 import time
-from funcoes import reservar_quarto, listar_reservas, verificar_disponibilidade, cancelar_reserva, buscar_quartos_ocupados
+from funcoes import reservar_quarto, listar_reservas, buscar_quartos_ocupados, cancelar_reserva
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="Sistema de Hotel", layout="wide")
+st.set_page_config(page_title="Sistema de Hotel", layout="wide", page_icon="🏨")
+
+# Esconde menu padrão para dar cara de App profissional
+hide_st_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            header {visibility: hidden;}
+            </style>
+            """
+st.markdown(hide_st_style, unsafe_allow_html=True)
 
 # --- SISTEMA DE LOGIN ---
 def check_password():
@@ -17,12 +27,15 @@ def check_password():
     
     if st.button("Entrar"):
         # Garante que busca na seção [geral] conforme o secrets atual
-        senha_secreta = st.secrets["geral"]["senha_site"]
-        if senha_digitada == senha_secreta:  
-            st.session_state['password_correct'] = True
-            st.rerun()
-        else:
-            st.error("Senha incorreta.")
+        try:
+            senha_secreta = st.secrets["geral"]["senha_site"]
+            if senha_digitada == senha_secreta:  
+                st.session_state['password_correct'] = True
+                st.rerun()
+            else:
+                st.error("Senha incorreta.")
+        except:
+            st.error("Erro: Senha não configurada no secrets.toml")
     return False
 
 if not check_password():
@@ -36,22 +49,27 @@ with st.sidebar:
     st.header("Recepção")
     
     # 1. SELETOR GLOBAL (FORA DO FORMULÁRIO)
+    # Ao mudar aqui, a tabela lá embaixo atualiza instantaneamente
     quarto_selecionado = st.selectbox(
         "Selecione o Quarto para Gerenciar:", 
         [1, 2, 3, 4, 5, 6]
     )
     
-    st.divider() # Uma linha visual para separar
+    st.divider() # Linha visual
     
     st.subheader("Fazer Nova Reserva")
     
     # 2. FORMULÁRIO DE CADASTRO
     with st.form("form_reserva"):
-        # Mostra visualmente qual quarto está sendo reservado
         st.info(f"Reservando: **Quarto {quarto_selecionado}**")
         
-        # Continuamos só com os dados:
+        # Dados do Cliente
         nome_cliente = st.text_input("Nome do Cliente")
+        
+        # --- NOVOS CAMPOS ---
+        telefone = st.text_input("Telefone / WhatsApp", placeholder="(XX) 9XXXX-XXXX")
+        qtd_pessoas = st.number_input("Qtd. Hóspedes", min_value=1, value=1, step=1)
+        # --------------------
         
         col1, col2 = st.columns(2)
         with col1:
@@ -89,16 +107,19 @@ with st.sidebar:
             
             # Feedback de carregamento
             with st.spinner("Conectando ao banco de dados..."):
+                # Passando os novos parâmetros para a função atualizada
                 sucesso, mensagem = reservar_quarto(
                     quarto_selecionado, 
                     nome_cliente, 
+                    telefone,     # <--- Novo
+                    qtd_pessoas,  # <--- Novo
                     entrada_str, 
                     saida_str, 
                     valor_diaria
                 )
             
             if sucesso:
-                # 4. DATAS BONITAS NA MENSAGEM DE SUCESSO
+                # Datas bonitas na mensagem
                 entrada_br = data_entrada.strftime("%d/%m/%Y")
                 saida_br = data_saida.strftime("%d/%m/%Y")
                 st.success(f"✅ {mensagem} ({entrada_br} até {saida_br})")
@@ -115,7 +136,7 @@ hoje = datetime.date.today()
 hoje_str = hoje.strftime("%Y-%m-%d")
 amanha_str = (hoje + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
 
-# Consulta otimizada
+# Consulta otimizada para pintar os quadradinhos
 lista_ocupados = buscar_quartos_ocupados(hoje_str, amanha_str)
 
 cols = st.columns(6)
@@ -132,7 +153,6 @@ for i in range(6):
 
 # --- TABELA DE RESERVAS E CANCELAMENTO ---
 
-# --- ÁREA DE LISTAGEM COM ABAS ---
 st.write("---") 
 st.header("Gerenciamento de Reservas")
 
@@ -161,12 +181,20 @@ with tab_ativas:
     if dados_ativos:
         tabela_ativas = []
         for item in dados_ativos:
+            # Formatação de moeda
             val_formatado = f"R$ {item[6]:.2f}" if len(item) > 6 and item[6] is not None else "R$ 0.00"
             
+            # Tratamento para evitar erro em registros antigos (sem telefone/qtd)
+            # Índices: 7 = Telefone, 8 = Qtd Pessoas
+            tel_cliente = item[7] if len(item) > 7 and item[7] else "-"
+            num_pessoas = item[8] if len(item) > 8 and item[8] else 1
+
             tabela_ativas.append({
                 "ID": item[0],
                 "Quarto": item[2],
                 "Cliente": item[3],
+                "Contato": tel_cliente,      # <--- Exibindo na tabela
+                "Hóspedes": num_pessoas,      # <--- Exibindo na tabela
                 "Entrada": item[4].strftime("%d/%m/%Y"),
                 "Saída": item[5].strftime("%d/%m/%Y"),
                 "Valor Total": val_formatado
@@ -177,10 +205,9 @@ with tab_ativas:
         st.warning("Zona de Cancelamento")
         c1, c2 = st.columns([3, 1])
         with c1:
-            # Lista IDs disponíveis na visualização atual
+            # Lista IDs disponíveis
             ids_disponiveis = [d[0] for d in dados_ativos]
-            # Formata o selectbox para mostrar "ID - Cliente (Quarto)"
-            # Isso ajuda a não apagar a reserva errada na visão geral
+            # Mapa visual para o selectbox
             mapa_rotulos = {d[0]: f"ID {d[0]} - {d[3]} (Quarto {d[2]})" for d in dados_ativos}
             
             id_cancelar = st.selectbox(
@@ -207,7 +234,7 @@ with tab_ativas:
 
 # --- ABA 2: HISTÓRICO ---
 with tab_historico:
-    # Repetimos a lógica do filtro para o histórico também
+    # Repetimos a lógica do filtro para o histórico
     col_hist, _ = st.columns([2, 3])
     with col_hist:
         filtro_hist = st.radio(
@@ -229,10 +256,15 @@ with tab_historico:
         for item in dados_hist:
             val_formatado = f"R$ {item[6]:.2f}" if len(item) > 6 and item[6] is not None else "R$ 0.00"
             
+            tel_cliente = item[7] if len(item) > 7 and item[7] else "-"
+            # Não mostramos qtd_pessoas no histórico para economizar espaço, 
+            # mas se quiser é só adicionar igual fizemos acima.
+            
             tabela_hist.append({
                 "ID": item[0],
                 "Quarto": item[2],
                 "Cliente": item[3],
+                "Contato": tel_cliente,      # <--- Exibindo no histórico
                 "Entrou em": item[4].strftime("%d/%m/%Y"),
                 "Saiu em": item[5].strftime("%d/%m/%Y"),
                 "Valor Pago": val_formatado
