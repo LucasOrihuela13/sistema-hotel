@@ -7,11 +7,20 @@ from funcoes import reservar_quarto, listar_reservas, buscar_quartos_ocupados, c
 st.set_page_config(page_title="Sistema de Hotel", layout="wide", page_icon="🏨")
 
 # Esconde menu padrão para dar cara de App profissional
+# Adicionei 'initial_sidebar_state="expanded"' para garantir que ela comece aberta
+st.set_page_config(
+    page_title="Sistema de Hotel", 
+    layout="wide", 
+    page_icon="🏨",
+    initial_sidebar_state="expanded" 
+)
+
+# Esconde menu e rodapé, mas MANTÉM o botão de navegação
 hide_st_style = """
             <style>
             #MainMenu {visibility: hidden;}
             footer {visibility: hidden;}
-            header {visibility: hidden;}
+            /* header {visibility: hidden;}  <-- ESSA LINHA FOI REMOVIDA */
             </style>
             """
 st.markdown(hide_st_style, unsafe_allow_html=True)
