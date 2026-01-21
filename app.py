@@ -189,7 +189,6 @@ with tab_ativas:
             horizontal=True
         )
     
-    # Define o ID para busca com base na escolha
     if tipo_filtro == "Todos os Quartos":
         id_busca = None
     else:
@@ -201,33 +200,35 @@ with tab_ativas:
     if dados_ativos:
         tabela_ativas = []
         for item in dados_ativos:
-            # Formatação de moeda
             val_formatado = f"R$ {item[6]:.2f}" if len(item) > 6 and item[6] is not None else "R$ 0.00"
             
-            # Tratamento para evitar erro em registros antigos (sem telefone/qtd)
-            # Índices: 7 = Telefone, 8 = Qtd Pessoas
             tel_cliente = item[7] if len(item) > 7 and item[7] else "-"
             num_pessoas = item[8] if len(item) > 8 and item[8] else 1
 
             tabela_ativas.append({
-                "ID": item[0],
+                # "ID": item[0],  <-- REMOVIDO DAQUI (Só visualmente)
                 "Quarto": item[2],
                 "Cliente": item[3],
-                "Contato": tel_cliente,      # <--- Exibindo na tabela
-                "Hóspedes": num_pessoas,      # <--- Exibindo na tabela
-                "Entrada": item[4].strftime("%d/%m/%Y"),
-                "Saída": item[5].strftime("%d/%m/%Y"),
-                "Valor Total": val_formatado
+                "Contato": tel_cliente,
+                "Hóspedes": num_pessoas, # Encurtei "Pessoas" para "Hóspedes" ou "Qtd" ajuda no mobile
+                "Entrada": item[4].strftime("%d/%m"), # DICA: Tirei o ano (/2026) para economizar espaço
+                "Saída": item[5].strftime("%d/%m"),   # DICA: Tirei o ano aqui também
+                "Valor": val_formatado # Encurtei "Valor Total" para "Valor"
             })
-        st.table(tabela_ativas)
+            
+        # MUDANÇA PRINCIPAL AQUI:
+        # Usamos dataframe com hide_index=True (some o 0) e use_container_width (ocupa a tela toda)
+        st.dataframe(tabela_ativas, hide_index=True, use_container_width=True)
         
         # --- ÁREA DE CANCELAMENTO ---
         st.warning("Zona de Cancelamento")
         c1, c2 = st.columns([3, 1])
         with c1:
-            # Lista IDs disponíveis
+            # A lógica continua funcionando porque usa 'dados_ativos' (que tem o ID),
+            # e não 'tabela_ativas' (que é só para mostrar).
             ids_disponiveis = [d[0] for d in dados_ativos]
-            # Mapa visual para o selectbox
+            
+            # Aqui mantemos o ID visível para você saber qual cancelar
             mapa_rotulos = {d[0]: f"ID {d[0]} - {d[3]} (Quarto {d[2]})" for d in dados_ativos}
             
             id_cancelar = st.selectbox(
