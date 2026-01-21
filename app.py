@@ -26,16 +26,27 @@ def check_password():
     senha_digitada = st.text_input("Digite a senha de acesso", type="password")
     
     if st.button("Entrar"):
-        # Garante que busca na seção [geral] conforme o secrets atual
+        # 1. Tenta buscar a senha no secrets
+        senha_secreta = None
         try:
+            # Tenta buscar na seção [geral]
             senha_secreta = st.secrets["geral"]["senha_site"]
-            if senha_digitada == senha_secreta:  
-                st.session_state['password_correct'] = True
-                st.rerun()
-            else:
-                st.error("Senha incorreta.")
-        except:
-            st.error("Erro: Senha não configurada no secrets.toml")
+        except (KeyError, FileNotFoundError):
+            # Se não achar, tenta buscar na raiz (caso o secrets esteja antigo)
+            senha_secreta = st.secrets.get("senha_site")
+
+        # 2. Verifica se a senha foi encontrada no arquivo
+        if not senha_secreta:
+            st.error("Erro: Senha não configurada no secrets.toml. Verifique o arquivo.")
+            return False
+
+        # 3. Compara as senhas (FORA do try/except para o rerun funcionar)
+        if senha_digitada == senha_secreta:  
+            st.session_state['password_correct'] = True
+            st.rerun() # Agora sim, o rerun acontece livremente!
+        else:
+            st.error("Senha incorreta.")
+            
     return False
 
 if not check_password():
