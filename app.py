@@ -80,7 +80,7 @@ with st.sidebar:
     st.subheader("Fazer Nova Reserva")
     
     # 2. FORMULÁRIO DE CADASTRO
-    with st.form("form_reserva"):
+    with st.form("form_reserva", clear_on_submit=False, enter_to_submit=False):
         st.info(f"Reservando: **Quarto {quarto_selecionado}**")
         
         # Dados do Cliente
