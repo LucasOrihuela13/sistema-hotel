@@ -68,6 +68,12 @@ st.title("🏨 Sistema de Gerenciamento de Hotel")
 with st.sidebar:
     st.header("Recepção")
     
+    # Se clicado, ele recarrega a página inteira e busca dados novos no banco
+    if st.button("🔄 Atualizar Dados"):
+        st.rerun()
+        
+    st.divider() # Uma linha para separar do resto
+
     # 1. SELETOR GLOBAL (FORA DO FORMULÁRIO)
     # Ao mudar aqui, a tabela lá embaixo atualiza instantaneamente
     quarto_selecionado = st.selectbox(
