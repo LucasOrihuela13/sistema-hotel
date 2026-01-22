@@ -4,8 +4,6 @@ import time
 from funcoes import reservar_quarto, listar_reservas, buscar_quartos_ocupados, cancelar_reserva
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="Sistema de Hotel", layout="wide", page_icon="🏨")
-
 # Esconde menu padrão para dar cara de App profissional
 # Adicionei 'initial_sidebar_state="expanded"' para garantir que ela comece aberta
 st.set_page_config(
@@ -21,9 +19,21 @@ hide_st_style = """
             #MainMenu {visibility: hidden;}
             footer {visibility: hidden;}
             /* header {visibility: hidden;}  <-- ESSA LINHA FOI REMOVIDA */
+            
+            /* ESCONDE A DICA DO ENTER (CSS de garantia) */
+            [data-testid="InputInstructions"] {
+                display: none;
+            }
             </style>
             """
 st.markdown(hide_st_style, unsafe_allow_html=True)
+
+# --- CORREÇÃO DE FUSO HORÁRIO (BRASIL) ---
+# Função auxiliar para garantir que o sistema respeite o horário de Brasília (UTC-3)
+def data_hoje_br():
+    agora_utc = datetime.datetime.utcnow()
+    agora_br = agora_utc - datetime.timedelta(hours=3)
+    return agora_br.date()
 
 # --- SISTEMA DE LOGIN ---
 def check_password():
@@ -85,6 +95,9 @@ with st.sidebar:
     
     st.subheader("Fazer Nova Reserva")
     
+    # Definição da data de hoje corrigida (Brasil)
+    hoje_brasil = data_hoje_br()
+    
     # 2. FORMULÁRIO DE CADASTRO
     with st.form("form_reserva", clear_on_submit=False, enter_to_submit=False):
         st.info(f"Reservando: **Quarto {quarto_selecionado}**")
@@ -101,13 +114,13 @@ with st.sidebar:
         with col1:
             data_entrada = st.date_input(
                 "Data Entrada", 
-                datetime.date.today(),
+                hoje_brasil, # <--- Usa data corrigida
                 format="DD/MM/YYYY"
             )
         with col2:
             data_saida = st.date_input(
                 "Data Saída", 
-                datetime.date.today() + datetime.timedelta(days=1),
+                hoje_brasil + datetime.timedelta(days=1), # <--- Usa data corrigida
                 format="DD/MM/YYYY"
             )
         
@@ -118,10 +131,9 @@ with st.sidebar:
 
     # LÓGICA DE ENVIO
     if enviado:
-        hoje = datetime.date.today()
-        
         # 3. VALIDAÇÕES DE SEGURANÇA
-        if data_entrada < hoje:
+        # Compara com hoje_brasil para evitar erros de fuso
+        if data_entrada < hoje_brasil:
             st.error("❌ Erro: Não é possível fazer reservas no passado!")
         elif data_saida <= data_entrada:
             st.error("❌ Erro: A data de saída deve ser depois da entrada!")
@@ -158,9 +170,10 @@ with st.sidebar:
 
 st.subheader("Estado Atual dos Quartos (Hoje)")
 
-hoje = datetime.date.today()
-hoje_str = hoje.strftime("%Y-%m-%d")
-amanha_str = (hoje + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+# Usa data do Brasil para colorir os quartos corretamente
+hoje_painel = data_hoje_br()
+hoje_str = hoje_painel.strftime("%Y-%m-%d")
+amanha_str = (hoje_painel + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
 
 # Consulta otimizada para pintar os quadradinhos
 lista_ocupados = buscar_quartos_ocupados(hoje_str, amanha_str)
@@ -212,26 +225,24 @@ with tab_ativas:
             num_pessoas = item[8] if len(item) > 8 and item[8] else 1
 
             tabela_ativas.append({
-                # "ID": item[0],  <-- REMOVIDO DAQUI (Só visualmente)
+                # "ID": item[0],  <-- REMOVIDO PARA MOBILE (Visualmente)
                 "Quarto": item[2],
                 "Cliente": item[3],
                 "Contato": tel_cliente,
-                "Hóspedes": num_pessoas, # Encurtei "Pessoas" para "Hóspedes" ou "Qtd" ajuda no mobile
-                "Entrada": item[4].strftime("%d/%m"), # DICA: Tirei o ano (/2026) para economizar espaço
-                "Saída": item[5].strftime("%d/%m"),   # DICA: Tirei o ano aqui também
-                "Valor": val_formatado # Encurtei "Valor Total" para "Valor"
+                "Hóspedes": num_pessoas, # Encurtei "Pessoas" para "Hóspedes"
+                "Entrada": item[4].strftime("%d/%m"), # Data curta (sem ano)
+                "Saída": item[5].strftime("%d/%m"),   # Data curta (sem ano)
+                "Valor": val_formatado 
             })
             
-        # MUDANÇA PRINCIPAL AQUI:
-        # Usamos dataframe com hide_index=True (some o 0) e use_container_width (ocupa a tela toda)
+        # OTIMIZAÇÃO VISUAL: hide_index=True remove a coluna '0, 1, 2'
         st.dataframe(tabela_ativas, hide_index=True, use_container_width=True)
         
         # --- ÁREA DE CANCELAMENTO ---
         st.warning("Zona de Cancelamento")
         c1, c2 = st.columns([3, 1])
         with c1:
-            # A lógica continua funcionando porque usa 'dados_ativos' (que tem o ID),
-            # e não 'tabela_ativas' (que é só para mostrar).
+            # A lógica continua funcionando porque usa 'dados_ativos' (que tem o ID)
             ids_disponiveis = [d[0] for d in dados_ativos]
             
             # Aqui mantemos o ID visível para você saber qual cancelar
@@ -284,16 +295,15 @@ with tab_historico:
             val_formatado = f"R$ {item[6]:.2f}" if len(item) > 6 and item[6] is not None else "R$ 0.00"
             
             tel_cliente = item[7] if len(item) > 7 and item[7] else "-"
-            # Não mostramos qtd_pessoas no histórico para economizar espaço, 
-            # mas se quiser é só adicionar igual fizemos acima.
+            # Não mostramos qtd_pessoas no histórico para economizar espaço
             
             tabela_hist.append({
-                "ID": item[0],
+                # "ID": item[0], <-- Opcional remover aqui também se quiser
                 "Quarto": item[2],
                 "Cliente": item[3],
-                "Contato": tel_cliente,      # <--- Exibindo no histórico
-                "Entrou em": item[4].strftime("%d/%m/%Y"),
-                "Saiu em": item[5].strftime("%d/%m/%Y"),
+                "Contato": tel_cliente,      
+                "Entrou em": item[4].strftime("%d/%m"), # Data curta
+                "Saiu em": item[5].strftime("%d/%m"),   # Data curta
                 "Valor Pago": val_formatado
             })
         
